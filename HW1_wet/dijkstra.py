@@ -35,7 +35,7 @@ def dijkstra(puzzle):
         for action in current_s.get_actions():
             next_state = current_s.apply_action(action)
             if next_state.to_string() not in concluded:
-                heapq.heappush(fringe,(priority_s+1,next_state))
+                heapq.heappush(fringe, (priority_s+1, next_state))
                 prev[next_state.to_string()] = action # new
                 if next_state.to_string() == goal.to_string(): # new
                     flag = True

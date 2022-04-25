@@ -3,7 +3,6 @@ from planning_utils import *
 import heapq
 import datetime
 
-
 def a_star(puzzle):
     '''
     apply a_star to a given puzzle
@@ -17,11 +16,8 @@ def a_star(puzzle):
     initial = puzzle.start_state
     goal = puzzle.goal_state
 
-    # this is the heuristic function for of the start state
-    initial_to_goal_heuristic = initial.get_manhattan_distance(goal)
-
     # the fringe is the queue to pop items from
-    fringe = [(initial_to_goal_heuristic, initial)]
+    fringe = [(0, initial)]
     # concluded contains states that were already resolved
     concluded = set()
     # a mapping from state (as a string) to the currently minimal distance (int).
@@ -31,8 +27,34 @@ def a_star(puzzle):
     prev = {initial.to_string(): None}
 
     while len(fringe) > 0:
-        # remove the following line and complete the algorithm
-        assert False
+        flag = False
+        priority_s, current_s = heapq.heappop(fringe)  # get vertex u with minimal d + h
+        concluded.add(current_s.to_string())  # add the vertex to S
+        for action in current_s.get_actions():
+            next_state = current_s.apply_action(action)
+            # if it is in concloded:
+            #   continue
+            # elif its in fringe:
+            #   if d[next_state] > d[u] + c(next_state,v):
+            #       d[next_state] > d[u] + c(next_state,v)
+            #       change priority in fringe
+            #       update prev
+            # else:
+            #   create it, and add it to fringe
+            #   update prev
+            if next_state.to_string() not in concluded or distances[next_state.to_string()] > 1 + next_state.get_manhattan_distance(goal):
+                heapq.heappush(fringe, (priority_s + 1 + next_state.get_manhattan_distance(goal), next_state))
+                prev[next_state.to_string()] = action  # new
+                if next_state.to_string() == goal.to_string():  # new
+                    flag = True
+
+        """flag = False
+        for s in new_state:
+            prev[s.to_string()] = current_s.to_string()
+            if s.to_string() == goal.to_string():
+                flag = True"""
+        if flag:
+            break
 
     return prev
 
