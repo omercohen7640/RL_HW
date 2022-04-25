@@ -21,7 +21,7 @@ def traverse(goal_state, prev):
         else:
             break
         goal_state = goal_state.apply_action(a)
-        result.append((goal_state, action))
+        result.append((goal_state, a))
 
 
 

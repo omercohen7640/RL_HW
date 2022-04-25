@@ -30,14 +30,14 @@ def dijkstra(puzzle):
     while len(fringe) > 0:
         flag = False
         priority_s, current_s = heapq.heappop(fringe)
-        concluded.add(current_s)
+        concluded.add(current_s.to_string())
         new_state = []
         for action in current_s.get_actions():
-            new_state += current_s.apply_action(action)
-            if new_state[-1] not in concluded:
-                heapq.heappush(fringe,(priority_s+1,new_state[-1]))
-                prev[new_state[-1].to_string()] = action # new
-                if new_state[-1].to_string() == goal.to_string(): # new
+            next_state = current_s.apply_action(action)
+            if next_state.to_string() not in concluded:
+                heapq.heappush(fringe,(priority_s+1,next_state))
+                prev[next_state.to_string()] = action # new
+                if next_state.to_string() == goal.to_string(): # new
                     flag = True
 
         """flag = False
