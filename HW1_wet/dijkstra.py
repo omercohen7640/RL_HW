@@ -28,7 +28,7 @@ def dijkstra(puzzle):
     prev = {initial.to_string(): None}
 
     while len(fringe) > 0:
-
+        flag = False
         priority_s, current_s = heapq.heappop(fringe)
         concluded.add(current_s)
         new_state = []
@@ -36,11 +36,15 @@ def dijkstra(puzzle):
             new_state += current_s.apply_action(action)
             if new_state[-1] not in concluded:
                 heapq.heappush(fringe,(priority_s+1,new_state[-1]))
-        flag = False
+                prev[new_state[-1].to_string()] = action # new
+                if new_state[-1].to_string() == goal.to_string(): # new
+                    flag = True
+
+        """flag = False
         for s in new_state:
             prev[s.to_string()] = current_s.to_string()
             if s.to_string() == goal.to_string():
-                flag = True
+                flag = True"""
         if flag:
             break
 

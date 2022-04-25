@@ -8,7 +8,23 @@ def traverse(goal_state, prev):
     '''
     result = [(goal_state, None)]
     # remove the following line and complete the algorithm
-    assert False
+    while True:
+        action = prev[goal_state.to_string()]
+        if action == 'u':
+            a = 'd'
+        elif action == 'd':
+            a = 'u'
+        elif action == 'l':
+            a = 'r'
+        elif action == 'r':
+            a = 'l'
+        else:
+            break
+        goal_state = goal_state.apply_action(a)
+        result.append((goal_state, action))
+
+
+
     return result
 
 
