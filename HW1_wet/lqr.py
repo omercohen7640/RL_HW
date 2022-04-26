@@ -52,13 +52,13 @@ def find_lqr_control_input(cart_pole_env):
 
     # TODO - Q and R should not be zero, find values that work, hint: all the values can be <= 1.0
     Q = np.matrix([
-        [1e-7, 0, 0, 0],
+        [2e-8, 0, 0, 0],
         [0, 0, 0, 0],
-        [0, 0, 0.15, 0],
+        [0, 0, 1e-1, 0],
         [0, 0, 0, 0]
     ])
 
-    R = np.matrix([1e-7])
+    R = np.matrix([5e-7])
 
     # TODO - you need to compute these matrices in your solution, but these are not returned.
     Ps = []
@@ -81,10 +81,13 @@ def find_lqr_control_input(cart_pole_env):
     for t in range(cart_pole_env.planning_steps):
         inv = np.linalg.inv(np.matmul(np.matmul(B.T, Ps[t+1]), B)+R)
         K = -np.matmul(np.matmul(np.matmul(inv, B.T), Ps[t+1]), A)
+        K = K.astype(np.float32)
         Ks.append(K)
         U = np.matmul(K, xs[t])
+        U = U.astype(np.float32)
         us.append(U)
         X = np.matmul(A, xs[t]) + np.matmul(B, U)
+        X = X.astype(np.float32)
         xs.append(X)
 
 
@@ -131,12 +134,12 @@ if __name__ == '__main__':
         predicted_theta = xs[iteration].item(2)
         actual_theta = actual_state[2]
         predicted_action = us[iteration].item(0)
-        actual_action = (Ks[iteration] * np.expand_dims(actual_state, 1)).item(0)
+        actual_action = (Ks[iteration] * np.expand_dims(actual_state, 1).astype(np.float32)).item(0)
         print_diff(iteration, predicted_theta, actual_theta, predicted_action, actual_action)
         # apply action according to actual state visited
         # make action in range
         actual_action = max(env.action_space.low.item(0), min(env.action_space.high.item(0), actual_action))
-        actual_action = np.array([actual_action])
+        actual_action = np.array([actual_action]).astype(np.float32)
         actual_state, reward, is_done, _ = env.step(actual_action)
         is_stable = reward == 1.0
         is_stable_all.append(is_stable)
