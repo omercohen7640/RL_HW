@@ -1,3 +1,5 @@
+import os
+
 from puzzle import *
 from planning_utils import *
 import heapq
@@ -32,6 +34,7 @@ def a_star(puzzle):
     # that achieves the minimal distance to the starting state of puzzle.
     prev = {initial.to_string(): None}
     ignore = set()
+    alpha = 1
     while len(fringe) > 0:
 
         priority_s, current_s = heapq.heappop(fringe)  # get vertex u with minimal d + h
@@ -54,7 +57,7 @@ def a_star(puzzle):
                     ignore.add((priority, s.to_string()))
                     distances[next_state.to_string()] = distances[current_s.to_string()] + 1
                     # change priority in fringe
-                    heapq.heappush(fringe, (distances[next_state.to_string()] + next_state.get_manhattan_distance(goal),next_state))
+                    heapq.heappush(fringe, (distances[next_state.to_string()] + alpha*next_state.get_manhattan_distance(goal),next_state))
                     # update prev
                     prev[next_state.to_string()] = action
             else:
@@ -62,7 +65,7 @@ def a_star(puzzle):
                 distances[next_state.to_string()] = distances[current_s.to_string()] + 1 # create it, and add it to fringe
 
                 prev[next_state.to_string()] = action # update prev
-                heapq.heappush(fringe, (distances[next_state.to_string()] + next_state.get_manhattan_distance(goal), next_state))
+                heapq.heappush(fringe, (distances[next_state.to_string()] + alpha*next_state.get_manhattan_distance(goal), next_state))
 
     return prev
 
@@ -87,6 +90,7 @@ if __name__ == '__main__':
     goal_state = initial_state
     for a in actions:
         goal_state = goal_state.apply_action(a)
+    # goal_state = State(os.linesep.join(['8 7 6','5 4 3','2 1 0'])) # our hard puzzle
     puzzle = Puzzle(initial_state, goal_state)
     print('original number of actions:{}'.format(len(actions)))
     solution_start_time = datetime.datetime.now()
