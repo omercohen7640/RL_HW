@@ -3,6 +3,12 @@ from planning_utils import *
 import heapq
 import datetime
 
+def in_heapq(heapq_list, heapq_item_string):
+    for i in  range(len(heapq_list)):
+        if heapq_list[i][1] == heapq_item_string:
+            return i
+    return -1
+
 def a_star(puzzle):
     '''
     apply a_star to a given puzzle
@@ -32,10 +38,12 @@ def a_star(puzzle):
         concluded.add(current_s.to_string())  # add the vertex to S
         for action in current_s.get_actions():
             next_state = current_s.apply_action(action)
-            # if it is in concloded:
-            #   continue
-            # elif its in fringe:
-            #   if d[next_state] > d[u] + c(next_state,v):
+            if next_state.to_string() in concluded:
+                continue
+            idx_in_frienge = in_heapq(fringe, next_state.to_string())
+            if idx_in_frienge != -1:
+            #  if d[next_state] > d[u] + c(next_state,v):
+                    if fringe[idx_in_frienge][0] >
             #       d[next_state] > d[u] + c(next_state,v)
             #       change priority in fringe
             #       update prev
