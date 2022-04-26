@@ -40,12 +40,9 @@ def dijkstra(puzzle):
                 if next_state.to_string() == goal.to_string(): # new
                     flag = True
 
-        """flag = False
-        for s in new_state:
-            prev[s.to_string()] = current_s.to_string()
-            if s.to_string() == goal.to_string():
-                flag = True"""
+
         if flag:
+            print(f'The size of concluded is: {len(concluded)}')
             break
 
     return prev

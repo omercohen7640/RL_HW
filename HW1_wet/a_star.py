@@ -40,6 +40,7 @@ def a_star(puzzle):
             continue
         concluded.add(current_s.to_string())  # add the vertex to S
         if current_s.to_string() == goal.to_string():  # new
+            print(f'The size of concluded is: {len(concluded)}')
             break
         for action in current_s.get_actions():
             next_state = current_s.apply_action(action)
@@ -49,7 +50,8 @@ def a_star(puzzle):
             if idx_in_fringe != -1: # in fringe
 
                 if distances[next_state.to_string()] > distances[current_s.to_string()] + 1:
-                    ignore.add(fringe[idx_in_fringe])
+                    priority, s = fringe[idx_in_fringe]
+                    ignore.add((priority, s.to_string()))
                     distances[next_state.to_string()] = distances[current_s.to_string()] + 1
                     # change priority in fringe
                     heapq.heappush(fringe, (distances[next_state.to_string()] + next_state.get_manhattan_distance(goal),next_state))
