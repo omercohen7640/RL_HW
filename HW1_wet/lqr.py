@@ -9,12 +9,15 @@ def get_A(cart_pole_env):
     :return: the A matrix used in LQR. i.e. x_{t+1} = A * x_t + B * u_t
     '''
     g = cart_pole_env.gravity
-    pole_mass = cart_pole_env.masspole
-    cart_mass = cart_pole_env.masscart
-    pole_length = cart_pole_env.length
-    dt = cart_pole_env.tau
-
-    return np.matrix([[0]])
+    pole_mass = cart_pole_env.masspole # m
+    cart_mass = cart_pole_env.masscart # M
+    pole_length = cart_pole_env.length # l
+    dt = cart_pole_env.tau # dt
+    m = pole_mass
+    M = cart_mass
+    l = pole_length
+    A_continous = [[0, 1, 0, 0],[0, 0, m*g/M, 0], [0, 0, 0, 1], [0, 0, g*(1+m/M)/l, 0]]
+    return np.matrix(A_continous)*dt + np.eye(4)
 
 
 def get_B(cart_pole_env):
@@ -27,9 +30,10 @@ def get_B(cart_pole_env):
     pole_mass = cart_pole_env.masspole
     cart_mass = cart_pole_env.masscart
     pole_length = cart_pole_env.length
+    l = pole_length
     dt = cart_pole_env.tau
-
-    return np.matrix([[0]])
+    M = cart_mass
+    return np.matrix([[0],[1/M],[0],[1/(M*l)]])*dt
 
 
 def find_lqr_control_input(cart_pole_env):
@@ -48,13 +52,13 @@ def find_lqr_control_input(cart_pole_env):
 
     # TODO - Q and R should not be zero, find values that work, hint: all the values can be <= 1.0
     Q = np.matrix([
+        [1e-7, 0, 0, 0],
         [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
+        [0, 0, 0.15, 0],
         [0, 0, 0, 0]
     ])
 
-    R = np.matrix([0])
+    R = np.matrix([1e-7])
 
     # TODO - you need to compute these matrices in your solution, but these are not returned.
     Ps = []
@@ -63,6 +67,27 @@ def find_lqr_control_input(cart_pole_env):
     us = []
     xs = [np.expand_dims(cart_pole_env.state, 1)]
     Ks = []
+
+    Ps.append(Q)
+    for t in reversed(range(cart_pole_env.planning_steps)):
+        term_1 = np.matmul(np.matmul(A.T,Ps[-1]),A)
+        term_2 = np.matmul(np.matmul(A.T,Ps[-1]),B)
+        inv_mat = np.linalg.inv(np.matmul(np.matmul(B.T,Ps[-1]),B)+R)
+        term_3 = np.matmul(np.matmul(B.T, Ps[-1]), A)
+        term_4 = np.matmul(np.matmul(term_2, inv_mat), term_3)
+        P = Q + term_1 - term_4
+        Ps.insert(0, P)
+
+    for t in range(cart_pole_env.planning_steps):
+        inv = np.linalg.inv(np.matmul(np.matmul(B.T, Ps[t+1]), B)+R)
+        K = -np.matmul(np.matmul(np.matmul(inv, B.T), Ps[t+1]), A)
+        Ks.append(K)
+        U = np.matmul(K, xs[t])
+        us.append(U)
+        X = np.matmul(A, xs[t]) + np.matmul(B, U)
+        xs.append(X)
+
+
 
     assert len(xs) == cart_pole_env.planning_steps + 1, "if you plan for x states there should be X+1 states here"
     assert len(us) == cart_pole_env.planning_steps, "if you plan for x states there should be X actions here"
