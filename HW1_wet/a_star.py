@@ -5,7 +5,7 @@ import datetime
 
 def in_heapq(heapq_list, heapq_item_string):
     for i in  range(len(heapq_list)):
-        if heapq_list[i][1] == heapq_item_string:
+        if heapq_list[i][1].to_string() == heapq_item_string:
             return i
     return -1
 
@@ -31,38 +31,36 @@ def a_star(puzzle):
     # the return value of the algorithm, a mapping from a state (as a string) to the state leading to it (NOT as string)
     # that achieves the minimal distance to the starting state of puzzle.
     prev = {initial.to_string(): None}
-
+    ignore = set()
     while len(fringe) > 0:
-        flag = False
+
         priority_s, current_s = heapq.heappop(fringe)  # get vertex u with minimal d + h
+
+        if (priority_s, current_s.to_string()) in ignore: # if its on ignore, continue
+            continue
         concluded.add(current_s.to_string())  # add the vertex to S
+        if current_s.to_string() == goal.to_string():  # new
+            break
         for action in current_s.get_actions():
             next_state = current_s.apply_action(action)
             if next_state.to_string() in concluded:
                 continue
-            idx_in_frienge = in_heapq(fringe, next_state.to_string())
-            if idx_in_frienge != -1:
-            #  if d[next_state] > d[u] + c(next_state,v):
-                    if fringe[idx_in_frienge][0] >
-            #       d[next_state] > d[u] + c(next_state,v)
-            #       change priority in fringe
-            #       update prev
-            # else:
-            #   create it, and add it to fringe
-            #   update prev
-            if next_state.to_string() not in concluded or distances[next_state.to_string()] > 1 + next_state.get_manhattan_distance(goal):
-                heapq.heappush(fringe, (priority_s + 1 + next_state.get_manhattan_distance(goal), next_state))
-                prev[next_state.to_string()] = action  # new
-                if next_state.to_string() == goal.to_string():  # new
-                    flag = True
+            idx_in_fringe = in_heapq(fringe, next_state.to_string())
+            if idx_in_fringe != -1: # in fringe
 
-        """flag = False
-        for s in new_state:
-            prev[s.to_string()] = current_s.to_string()
-            if s.to_string() == goal.to_string():
-                flag = True"""
-        if flag:
-            break
+                if distances[next_state.to_string()] > distances[current_s.to_string()] + 1:
+                    ignore.add(fringe[idx_in_fringe])
+                    distances[next_state.to_string()] = distances[current_s.to_string()] + 1
+                    # change priority in fringe
+                    heapq.heappush(fringe, (distances[next_state.to_string()] + next_state.get_manhattan_distance(goal),next_state))
+                    # update prev
+                    prev[next_state.to_string()] = action
+            else:
+
+                distances[next_state.to_string()] = distances[current_s.to_string()] + 1 # create it, and add it to fringe
+
+                prev[next_state.to_string()] = action # update prev
+                heapq.heappush(fringe, (distances[next_state.to_string()] + next_state.get_manhattan_distance(goal), next_state))
 
     return prev
 
