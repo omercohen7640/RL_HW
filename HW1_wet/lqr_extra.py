@@ -8,11 +8,12 @@ from lqr import *
 
 if __name__ == '__main__':
     thetas = []
-    for theta in [0.1 * np.pi, 0.22 * np.pi, 0.44 * np.pi]:
+    for theta in [0.1 * np.pi, 0.22*np.pi, 0.44*np.pi]:
         env = CartPoleContEnv(initial_theta=theta)
         # the following is an example to start at a different theta
         # env = CartPoleContEnv(initial_theta=np.pi * 0.25)
-
+        env.action_space.high = np.array([4.0]).astype(np.float32)
+        env.action_space.low = np.array([-4.0]).astype(np.float32)
         # print the matrices used in LQR
         print('A: {}'.format(get_A(env)))
         print('B: {}'.format(get_B(env)))
@@ -40,6 +41,7 @@ if __name__ == '__main__':
             actual_action = max(env.action_space.low.item(0), min(env.action_space.high.item(0), actual_action))
             actual_action = np.array([actual_action]).astype(np.float32)
             actual_state, reward, is_done, _ = env.step(actual_action)
+            #actual_state, reward, is_done, _ = env.step(np.array([us[iteration].item()]).astype(np.float32))
             is_stable = reward == 1.0
             is_stable_all.append(is_stable)
             env.render()
@@ -58,3 +60,4 @@ if __name__ == '__main__':
 
     # To load the display window
     plt.show()
+    a = 0

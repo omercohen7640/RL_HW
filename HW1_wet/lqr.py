@@ -51,6 +51,7 @@ def find_lqr_control_input(cart_pole_env):
     B = get_B(cart_pole_env)
 
     # TODO - Q and R should not be zero, find values that work, hint: all the values can be <= 1.0
+
     Q = np.matrix([
         [2e-8, 0, 0, 0],
         [0, 0, 0, 0],
