@@ -151,3 +151,6 @@ if __name__ == '__main__':
     # print if LQR succeeded
     print('valid episode: {}'.format(valid_episode))
 
+
+
+
