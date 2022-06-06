@@ -14,7 +14,13 @@ for i,t in enumerate(final_list):
     state_dict[t] = i
     index_dict[i] = t
 
+rewards = np.zeros((32, 1))
+for i in range(31):
+    state = list(index_dict[i])
+    for job in state:
+        rewards[i] -= c[job]
 
+a = 0
 
 
 
@@ -22,11 +28,11 @@ for i,t in enumerate(final_list):
 def solve_belman(policy):
 
     P_pi = np.zeros((32, 32))
-    rewards = np.zeros((32, 1))
+    #rewards = np.zeros((32, 1))
     for i in range(31):
         state = list(index_dict[i])
-        for job in state:
-            rewards[i] -= c[job]
+        #for job in state:
+        #    rewards[i] -= c[job]
         act = policy[i]
         state.remove(act)
         """try:
@@ -39,7 +45,7 @@ def solve_belman(policy):
 
     P_pi[31,31] = 1
     V_pi = np.zeros((32, 1))
-    for t in range(500):
+    for t in range(1000):
         V_pi = rewards + np.matmul(np.transpose(P_pi), V_pi)
 
 
@@ -67,11 +73,11 @@ def policy_iteration():
     pi = pi_c_policy()
     V = solve_belman(pi)
     V_s0 = [V[0].copy()]
-    rewards = np.zeros((32, 1))
+    #rewards = np.zeros((32, 1))
     for i in range(31):
         state = list(index_dict[i])
-        for job in state:
-            rewards[i] -= c[job]
+        #for job in state:
+        #    rewards[i] -= c[job]
     for j in range(20):
         for i in reversed(range(31)):
             state = list(index_dict[i])
@@ -87,7 +93,83 @@ def policy_iteration():
 
     return pi, V_s0
 
+def simulation(state_idx, action):
 
+    #state_idx = state_dict[tuple(state)]
+    state = list(index_dict[state_idx])
+    next_state = state.copy()
+    if state_idx == 31:
+        begin_state = 0
+        terminal_reward = 0
+        return begin_state, terminal_reward
+    if np.random.uniform() < mu[action]:
+        next_state.remove(action)
+    next_state_idx = state_dict[tuple(next_state)]
+
+    return next_state_idx, rewards[state_idx]
+
+def get_step_size(visits, method, idx):
+    if method == 1:
+        return 1/visits[idx]
+    elif method == 2:
+        return 0.01
+    else:
+        return 10/(100+visits[idx])
+
+def TD_0(method):
+    pi = pi_c_policy()
+    V = solve_belman(pi)
+    err_inf = []
+    err_s0 = []
+    visits = np.ones((32, 1))
+    V_hat = np.zeros((32, 1))
+    state_idx = 0
+    for i in range(40000):
+        next_state, reward = simulation(state_idx, pi[state_idx])
+        step_size = get_step_size(visits, method, state_idx)
+        visits[state_idx] += 1
+        if state_idx == 31:
+            err = np.abs(V_hat-V)
+            err_s0.append(err[0].copy())
+            err_inf.append(max(err.copy()))
+            state_idx = next_state
+            continue
+        V_hat[state_idx] += step_size*(reward + V_hat[next_state]-V_hat[state_idx])
+        state_idx = next_state
+
+
+    return err_inf, err_s0
+
+
+def TD_lambda(method, lamb):
+    pi = pi_c_policy()
+    V = solve_belman(pi)
+    err_inf = []
+    err_s0 = []
+    visits = np.ones((32, 1))
+    V_hat = np.zeros((32, 1))
+    state_idx = 0
+    e_tm1 = np.zeros((32, 1))
+    e_t = np.zeros((32, 1))
+    for i in range(80000):
+        next_state, reward = simulation(state_idx, pi[state_idx])
+        step_size = get_step_size(visits, method, state_idx)
+        visits[state_idx] += 1
+        if state_idx == 31:
+            err = np.abs(V_hat - V)
+            err_s0.append(err[0].copy())
+            err_inf.append(max(err.copy()))
+            state_idx = next_state
+            continue
+        dt = step_size * (reward + V_hat[next_state] - V_hat[state_idx])
+        one_hot = np.zeros((32, 1))
+        one_hot[state_idx] = 1
+        e_t = lamb*e_tm1+one_hot
+        V_hat += step_size*dt*e_t
+        e_tm1 = e_t
+        state_idx = next_state
+
+    return err_inf, err_s0
 
 
 
@@ -113,8 +195,9 @@ if __name__ == '__main__':
     plt.show()
 
     pi_c_mu = c_mu_policy()
-    V_c_mu = solve_belman(pi)
+    V_c_mu = solve_belman(pi_c_mu)
 
+    err_inf, err_s0 = TD_lambda(2, 0.75)
 
 
     a=0
