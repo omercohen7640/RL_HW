@@ -42,11 +42,19 @@ def solve_belman(policy):
         except:
             print('hi')"""
         next_idx = state_dict[tuple(state)]
+        #P_pi[next_idx, i] = mu[act]
+        #P_pi[i, i] = 1 - mu[act]
+        act1 = -1
+        if isinstance(act, list):
+            act1 = act.copy()
+            act = act[0]
         try :
             P_pi[next_idx, i] = mu[act]
             P_pi[i, i] = 1 - mu[act]
         except Exception as e:
-            print(str(e))
+            print(act1)
+            print(act)
+            print('d')
 
     P_pi[31,31] = 1
     V_pi = np.zeros((32, 1))
@@ -112,7 +120,7 @@ def simulation(state_idx, action):
         if np.random.uniform() < mu[action]:
             next_state.remove(action)
     except Exception as e:
-        print(str(e))
+        print('b')
     next_state_idx = state_dict[tuple(next_state)]
 
     return next_state_idx, rewards[state_idx]
@@ -186,10 +194,11 @@ def TD_lambda(method, lamb):
     return err_inf, err_s0
 
 def initialize_pi():
-    pi = np.zeros((32, 1), dtype=int)
+    pi = []
     for i in range(31):
         state = list(index_dict[i])
-        pi[i] = np.random.choice(state)
+        pi += [np.random.choice(state)]
+    pi += [0]
 
     return pi
 
@@ -202,28 +211,30 @@ def Q_learning(eps, method, V_star):
     Q_hat = np.zeros((32, 5))
     state_idx = 0
     i = 0
-    while i < N-1:
+    while i < 10*(N-1):
         curr_state = list(index_dict[state_idx])
-        if np.random.uniform() < eps:
+        if np.random.uniform() < eps and len(curr_state) > 1:
             act = np.random.choice(curr_state)
         else:
-            act = pi[state_idx][0]
+            act = pi[state_idx]
 
         next_state, reward = simulation(state_idx, act)
         step_size = get_step_size(visits, method, [state_idx, act])
         visits[state_idx, act] += 1
         if state_idx == 31:
-            V = solve_belman(pi)
-            err = np.abs(V - V_star)
-            err_s0.append(err[0].copy())
-            err_inf.append(max(err.copy()))
-            state_idx = next_state
+            if i % 100 == 0:
+                V = solve_belman(pi)
+                err = np.abs(V - V_star)
+                err_s0.append(err[0].copy())
+                err_inf.append(max(err.copy()))
+                state_idx = next_state
             i += 1
             continue
         try:
-            Q_hat[state_idx, act] += step_size * (reward + np.max(Q_hat[next_state, :]) - Q_hat[state_idx, act])
-        except:
-            print('bug')
+            Q_hat[state_idx, act] += step_size * (reward + Q_hat[next_state, pi[next_state]] - Q_hat[state_idx, act])
+
+        except Exception as e:
+            print(str(e))
         pi[state_idx] = curr_state[np.argmax(Q_hat[state_idx, curr_state])]
         state_idx = next_state
 
