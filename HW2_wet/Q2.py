@@ -74,18 +74,19 @@ def policy_iteration():
     V = solve_belman(pi)
     V_s0 = [V[0].copy()]
     #rewards = np.zeros((32, 1))
-    for i in range(31):
-        state = list(index_dict[i])
+    #for i in range(31):
+        #state = list(index_dict[i])
         #for job in state:
         #    rewards[i] -= c[job]
-    for j in range(20):
+    for j in range(3):
         for i in reversed(range(31)):
             state = list(index_dict[i])
             for job in state:
                 ref_state = state.copy()
                 ref_state.remove(job)
                 next_idx = state_dict[tuple(ref_state)]
-                val = rewards[i] + (1-mu[job])*V[i] +mu[job]*V[next_idx]
+                #val = rewards[i] + (1-mu[job])*V[i] +mu[job]*V[next_idx]
+                val = rewards[i]/mu[job] + V[next_idx]
                 if val > V[i]:
                     V[i] = val
                     pi[i] = job
@@ -194,8 +195,27 @@ if __name__ == '__main__':
     plt.title("$Initial$ $State$ $S_0$ $Value$ $Function$ $for$ $Policy$ $Iteration$")
     plt.show()
 
+    # section e
+    V_star = solve_belman(pi_star)
     pi_c_mu = c_mu_policy()
     V_c_mu = solve_belman(pi_c_mu)
+
+    plt.plot(range(32), V_c, color='lightskyblue')
+    plt.plot(range(32), V_star, color='pink')
+    plt.legend(['$V^{\pi_c}$', '$V^{\pi^*}$'])
+    plt.ylabel('$Value$ $Function$')
+    plt.xlabel('$state$')
+    plt.title("$Value$ $Function$ $V^{\pi_c}$ $vs$ $V^{\pi^*}$")
+    plt.show()
+
+    plt.scatter(range(32), pi_c_mu, marker='x', color='lightskyblue')
+    plt.scatter(range(32), pi_star, marker='x', color='pink')
+    plt.legend(['$\pi_{c\mu}$', '$\pi^*$'])
+    plt.yticks(range(1, 6))
+    plt.ylabel('$Action$')
+    plt.xlabel('$state$')
+    plt.title("$\pi_{c\mu}$ $vs$ $\pi^*$")
+    plt.show()
 
     err_inf, err_s0 = TD_lambda(2, 0.75)
 
