@@ -20,7 +20,9 @@ for i in range(31):
     for job in state:
         rewards[i] -= c[job]
 
-a = 0
+N = 500
+
+
 
 
 
@@ -40,8 +42,11 @@ def solve_belman(policy):
         except:
             print('hi')"""
         next_idx = state_dict[tuple(state)]
-        P_pi[next_idx, i] = mu[act]
-        P_pi[i, i] = 1 - mu[act]
+        try :
+            P_pi[next_idx, i] = mu[act]
+            P_pi[i, i] = 1 - mu[act]
+        except Exception as e:
+            print(str(e))
 
     P_pi[31,31] = 1
     V_pi = np.zeros((32, 1))
@@ -103,19 +108,22 @@ def simulation(state_idx, action):
         begin_state = 0
         terminal_reward = 0
         return begin_state, terminal_reward
-    if np.random.uniform() < mu[action]:
-        next_state.remove(action)
+    try:
+        if np.random.uniform() < mu[action]:
+            next_state.remove(action)
+    except Exception as e:
+        print(str(e))
     next_state_idx = state_dict[tuple(next_state)]
 
     return next_state_idx, rewards[state_idx]
 
 def get_step_size(visits, method, idx):
-    if method == 1:
-        return 1/visits[idx]
-    elif method == 2:
+    if method == 0:
+        return 1/visits[idx] if isinstance(idx,int) else 1/visits[idx[0], idx[1]]
+    elif method == 1:
         return 0.01
     else:
-        return 10/(100+visits[idx])
+        return 10/(100+visits[idx]) if isinstance(idx, int) else 10/(100+visits[idx[0], idx[1]])
 
 def TD_0(method):
     pi = pi_c_policy()
@@ -152,7 +160,11 @@ def TD_lambda(method, lamb):
     state_idx = 0
     e_tm1 = np.zeros((32, 1))
     e_t = np.zeros((32, 1))
-    for i in range(80000):
+    i = 0
+    err = np.abs(V_hat - V)
+    err_s0.append(err[0].copy())
+    err_inf.append(max(err.copy()))
+    while i < N-1:
         next_state, reward = simulation(state_idx, pi[state_idx])
         step_size = get_step_size(visits, method, state_idx)
         visits[state_idx] += 1
@@ -161,13 +173,58 @@ def TD_lambda(method, lamb):
             err_s0.append(err[0].copy())
             err_inf.append(max(err.copy()))
             state_idx = next_state
+            i+=1
             continue
-        dt = step_size * (reward + V_hat[next_state] - V_hat[state_idx])
+        dt = (reward + V_hat[next_state] - V_hat[state_idx])
         one_hot = np.zeros((32, 1))
         one_hot[state_idx] = 1
         e_t = lamb*e_tm1+one_hot
         V_hat += step_size*dt*e_t
         e_tm1 = e_t
+        state_idx = next_state
+
+    return err_inf, err_s0
+
+def initialize_pi():
+    pi = np.zeros((32, 1), dtype=int)
+    for i in range(31):
+        state = list(index_dict[i])
+        pi[i] = np.random.choice(state)
+
+    return pi
+
+def Q_learning(eps, method, V_star):
+
+    pi = initialize_pi()
+    err_inf = []
+    err_s0 = []
+    visits = np.ones((32, 5))
+    Q_hat = np.zeros((32, 5))
+    state_idx = 0
+    i = 0
+    while i < N-1:
+        curr_state = list(index_dict[state_idx])
+        if np.random.uniform() < eps:
+            act = np.random.choice(curr_state)
+        else:
+            act = pi[state_idx][0]
+
+        next_state, reward = simulation(state_idx, act)
+        step_size = get_step_size(visits, method, [state_idx, act])
+        visits[state_idx, act] += 1
+        if state_idx == 31:
+            V = solve_belman(pi)
+            err = np.abs(V - V_star)
+            err_s0.append(err[0].copy())
+            err_inf.append(max(err.copy()))
+            state_idx = next_state
+            i += 1
+            continue
+        try:
+            Q_hat[state_idx, act] += step_size * (reward + np.max(Q_hat[next_state, :]) - Q_hat[state_idx, act])
+        except:
+            print('bug')
+        pi[state_idx] = curr_state[np.argmax(Q_hat[state_idx, curr_state])]
         state_idx = next_state
 
     return err_inf, err_s0
@@ -189,7 +246,7 @@ if __name__ == '__main__':
 
     pi_star, V_s0 = policy_iteration()
 
-    plt.plot(range(len(V_s0)), V_s0, color='lightskyblue')
+    plt.plot(range(len(V_s0)), -np.array(V_s0), color='lightskyblue')
     plt.ylabel('$Value$ $Function$')
     plt.xlabel('$iteration$')
     plt.title("$Initial$ $State$ $S_0$ $Value$ $Function$ $for$ $Policy$ $Iteration$")
@@ -200,8 +257,8 @@ if __name__ == '__main__':
     pi_c_mu = c_mu_policy()
     V_c_mu = solve_belman(pi_c_mu)
 
-    plt.plot(range(32), V_c, color='lightskyblue')
-    plt.plot(range(32), V_star, color='pink')
+    plt.plot(range(32), -np.array(V_c), color='lightskyblue')
+    plt.plot(range(32), -np.array(V_star), color='pink')
     plt.legend(['$V^{\pi_c}$', '$V^{\pi^*}$'])
     plt.ylabel('$Value$ $Function$')
     plt.xlabel('$state$')
@@ -217,7 +274,87 @@ if __name__ == '__main__':
     plt.title("$\pi_{c\mu}$ $vs$ $\pi^*$")
     plt.show()
 
-    err_inf, err_s0 = TD_lambda(2, 0.75)
+
+    # section g
+    err_inf_1, err_s0_1 = TD_0(0)
+    err_inf_2, err_s0_2 = TD_0(1)
+    err_inf_3, err_s0_3 = TD_0(2)
+
+    plt.plot(range(len(err_inf_1)), err_inf_1, color='lightskyblue')
+    plt.plot(range(len(err_inf_2)), err_inf_2, color='pink')
+    plt.plot(range(len(err_inf_3)), err_inf_3, color='green')
+    plt.legend([r'$\alpha=\frac{1}{no. visits (s)}$', r'$\alpha=0.01$', r'$\alpha=\frac{10}{100 + no. visits (s)}$'])
+    plt.ylabel(r'$|V^{\pi_c}$ - $\^V_{TD}|_{\infty}$')
+    plt.xlabel('$iteration$')
+    plt.title(r'$Error$ $of$ $Infinity Norm$ $|V^{\pi_c}$ - $\^V_{TD}|_{\infty}$')
+    plt.show()
+
+    plt.plot(range(len(err_s0_1)), err_s0_1, color='lightskyblue')
+    plt.plot(range(len(err_s0_2)), err_s0_2, color='pink')
+    plt.plot(range(len(err_s0_3)), err_s0_3, color='green')
+    plt.legend([r'$\alpha=\frac{1}{no. visits (s)}$', r'$\alpha=0.01$', r'$\alpha=\frac{10}{100 + no. visits (s)}$'])
+    plt.ylabel(r'$|V^{\pi_c}(s_0)$ - $\^V_{TD}(s_0)|$')
+    plt.xlabel('$iteration$')
+    plt.title(r'$Error$ $of$ $Initial$ $State$ $s_0$ $|V^{\pi_c}(s_0)$ - $\^V_{TD}(s_0)|$')
+    plt.show()
+
+    # section h
+
+    lambdas = [0.25, 0.5, 0.75]
+    lis_V_inf = []
+    lis_V_s0 = []
+    for lamb in lambdas:
+        V_inf = np.zeros((N, 1))
+        V_s0 = np.zeros((N, 1))
+        for i in range(20):
+            err_inf, err_s0 = TD_lambda(0, lamb)
+            V_inf += np.array(err_inf)/20
+            V_s0 += np.array(err_s0) / 20
+        lis_V_inf.append(V_inf)
+        lis_V_s0.append(V_s0)
+
+    plt.plot(range(len(lis_V_inf[0])), lis_V_inf[0], color='lightskyblue')
+    plt.plot(range(len(lis_V_inf[1])), lis_V_inf[1], color='pink')
+    plt.plot(range(len(lis_V_inf[2])), lis_V_inf[2], color='green')
+    plt.legend([r'$\lambda=0.25$', r'$\lambda=0.5$', r'$\lambda=0.75$'])
+    plt.ylabel(r'$|V^{\pi_c}$ - $\^V_{TD(\lambda)}|_{\infty}$')
+    plt.xlabel('$iteration$')
+    plt.title(r'$Error$ $of$ $Infinity Norm$ $|V^{\pi_c}$ - $\^V_{TD(\lambda)}|_{\infty}$')
+    plt.show()
+
+    plt.plot(range(len(lis_V_s0[0])), lis_V_s0[0], color='lightskyblue')
+    plt.plot(range(len(lis_V_s0[1])), lis_V_s0[1], color='pink')
+    plt.plot(range(len(lis_V_s0[2])), lis_V_s0[2], color='green')
+    plt.legend([r'$\lambda=0.25$', r'$\lambda=0.5$', r'$\lambda=0.75$'])
+    plt.ylabel(r'$|V^{\pi_c}(s_0)$ - $\^V_{TD(\lambda)}(s_0)|$')
+    plt.xlabel('$iteration$')
+    plt.title(r'$Error$ $of$ $Initial$ $State$ $s_0$ $|V^{\pi_c}(s_0)$ - $\^V_{TD(\lambda)}(s_0)|$')
+    plt.show()
+
+    # section i
+
+    err_inf_1, err_s0_1 = Q_learning(0.1, 0, V_star)
+    err_inf_2, err_s0_2 = Q_learning(0.1, 1, V_star)
+    err_inf_3, err_s0_3 = Q_learning(0.1, 2, V_star)
+
+    plt.plot(range(len(err_inf_1)), err_inf_1, color='lightskyblue')
+    plt.plot(range(len(err_inf_2)), err_inf_2, color='pink')
+    plt.plot(range(len(err_inf_3)), err_inf_3, color='green')
+    plt.legend([r'$\alpha=\frac{1}{no. visits (s)}$', r'$\alpha=0.01$', r'$\alpha=\frac{10}{100 + no. visits (s)}$'])
+    plt.ylabel(r'$|V^{\pi^*}$ - $\^V_{\pi_Q}|_{\infty}$')
+    plt.xlabel('$iteration$')
+    plt.title(r'$Error$ $of$ $Infinity Norm$ $|V^{\pi^*}$ - $\^V_{\pi_Q}|_{\infty}$')
+    plt.show()
+
+    plt.plot(range(len(err_s0_1)), err_s0_1, color='lightskyblue')
+    plt.plot(range(len(err_s0_2)), err_s0_2, color='pink')
+    plt.plot(range(len(err_s0_3)), err_s0_3, color='green')
+    plt.legend([r'$\alpha=\frac{1}{no. visits (s)}$', r'$\alpha=0.01$', r'$\alpha=\frac{10}{100 + no. visits (s)}$'])
+    plt.ylabel(r'$|V^{\pi^*}(s_0)$ - $min_a{Q(s_0,a)}|$')
+    plt.xlabel('$iteration$')
+    plt.title(r'$Error$ $of$ $Initial$ $State$ $s_0$ $|V^{\pi^*}(s_0)$ - $min_a{Q(s_0,a)}|$')
+    plt.show()
+
 
 
     a=0
