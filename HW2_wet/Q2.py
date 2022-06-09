@@ -44,17 +44,9 @@ def solve_belman(policy):
         next_idx = state_dict[tuple(state)]
         #P_pi[next_idx, i] = mu[act]
         #P_pi[i, i] = 1 - mu[act]
-        act1 = -1
-        if isinstance(act, list):
-            act1 = act.copy()
-            act = act[0]
-        try :
-            P_pi[next_idx, i] = mu[act]
-            P_pi[i, i] = 1 - mu[act]
-        except Exception as e:
-            print(act1)
-            print(act)
-            print('d')
+
+        P_pi[next_idx, i] = mu[act]
+        P_pi[i, i] = 1 - mu[act]
 
     P_pi[31,31] = 1
     V_pi = np.zeros((32, 1))
@@ -211,9 +203,9 @@ def Q_learning(eps, method, V_star):
     Q_hat = np.zeros((32, 5))
     state_idx = 0
     i = 0
-    while i < 10*(N-1):
+    while i < 8000*N-1:
         curr_state = list(index_dict[state_idx])
-        if np.random.uniform() < eps and len(curr_state) > 1:
+        if np.random.uniform() < eps and len(curr_state) > 1: # epsilon greedy
             act = np.random.choice(curr_state)
         else:
             act = pi[state_idx]
@@ -221,21 +213,22 @@ def Q_learning(eps, method, V_star):
         next_state, reward = simulation(state_idx, act)
         step_size = get_step_size(visits, method, [state_idx, act])
         visits[state_idx, act] += 1
+
         if state_idx == 31:
-            if i % 100 == 0:
+            if i % 3 == 0:
+                for s in range(31):
+                    state_upd = index_dict[s]
+                    pi[s] = state_upd[np.argmax(Q_hat[s, state_upd])]
+            if i % 200 == 0:
                 V = solve_belman(pi)
                 err = np.abs(V - V_star)
-                err_s0.append(err[0].copy())
+                err_s0.append(np.abs(np.max(Q_hat[0, :])-V_star[0]))
                 err_inf.append(max(err.copy()))
                 state_idx = next_state
             i += 1
             continue
-        try:
-            Q_hat[state_idx, act] += step_size * (reward + Q_hat[next_state, pi[next_state]] - Q_hat[state_idx, act])
+        Q_hat[state_idx, act] += step_size * (reward + Q_hat[next_state, pi[next_state]] - Q_hat[state_idx, act])
 
-        except Exception as e:
-            print(str(e))
-        pi[state_idx] = curr_state[np.argmax(Q_hat[state_idx, curr_state])]
         state_idx = next_state
 
     return err_inf, err_s0
@@ -367,5 +360,24 @@ if __name__ == '__main__':
     plt.show()
 
 
+    # section j
 
-    a=0
+    err_inf_01, err_s0_01 = Q_learning(0.01, 1, V_star)
+
+    plt.plot(range(len(err_inf_2)), err_inf_2, color='lightskyblue')
+    plt.plot(range(len(err_inf_01)), err_inf_01, color='pink')
+    plt.legend([r'$\epsilon=0.1$', r'$\epsilon=0.01$'])
+    plt.ylabel(r'$|V^{\pi^*}$ - $\^V_{\pi_Q}|_{\infty}$')
+    plt.xlabel('$iteration$')
+    plt.title(r'$Error$ $of$ $Infinity Norm$ $|V^{\pi^*}$ - $\^V_{\pi_Q}|_{\infty}$')
+    plt.show()
+
+    plt.plot(range(len(err_s0_2)), err_s0_2, color='lightskyblue')
+    plt.plot(range(len(err_s0_01)), err_s0_01, color='pink')
+    plt.legend([r'$\epsilon=0.1$', r'$\epsilon=0.01$'])
+    plt.ylabel(r'$|V^{\pi^*}(s_0)$ - $min_a{Q(s_0,a)}|$')
+    plt.xlabel('$iteration$')
+    plt.title(r'$Error$ $of$ $Initial$ $State$ $s_0$ $|V^{\pi^*}(s_0)$ - $min_a{Q(s_0,a)}|$')
+    plt.show()
+
+
