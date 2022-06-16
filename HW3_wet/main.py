@@ -49,6 +49,7 @@ if __name__ == '__main__':
     # Question 3 section 2
 
     samples_to_collect = 100000
+    #samples_to_collect = 100
     np.random.seed(123)
     states, actions, rewards, next_states, done_flags = DataCollector(env).collect_data(samples_to_collect)
 
@@ -68,6 +69,9 @@ if __name__ == '__main__':
         np.random.seed(seed)
         linear_policy = LinearPolicy(120, 3, include_bias=False)
         states, actions, rewards, next_states, done_flags = DataCollector(env).collect_data(samples_to_collect)
+        data_transformer.set_using_states(states)
+        states=data_transformer.transform_states(states)
+        next_states=data_transformer.transform_states(next_states)
         encoded_states = feature_extractor.encode_states_with_radial_basis_functions(states)
         encoded_next_states = feature_extractor.encode_states_with_radial_basis_functions(next_states)
         for lspi_iteration in range(w_updates):
