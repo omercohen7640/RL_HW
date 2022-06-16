@@ -10,13 +10,13 @@ from game_player import GamePlayer
 
 def compute_lspi_iteration(encoded_states, encoded_next_states, actions, rewards, done_flags, linear_policy, gamma):
     # compute the next w given the data.
-    encoded_s_a = linear_policy.get_q_features(encoded_states,actions)
-    encoded_next_s_pi_next_s = linear_policy.get_q_features(encoded_next_states,linear_policy.get_max_action(encoded_next_states))
-    sub=gamma*encoded_next_s_pi_next_s-encoded_s_a
-    A = np.matmul(encoded_s_a.T,sub)
-    b = rewards@encoded_s_a
-    next_w = np.linalg.inv(A)@b
-    next_w = next_w.reshape(next_w.shape[0],1)
+    encoded_s_a = linear_policy.get_q_features(encoded_states, actions)
+    encoded_next_s_pi_next_s = linear_policy.get_q_features(encoded_next_states, linear_policy.get_max_action(encoded_next_states))
+    sub = gamma*encoded_next_s_pi_next_s-encoded_s_a
+    A = np.matmul(encoded_s_a.T, -sub)
+    b = np.matmul(rewards, encoded_s_a)
+    next_w = np.matmul(np.linalg.inv(A), b)
+    next_w = next_w.reshape(next_w.shape[0], 1)
     return next_w
 
 

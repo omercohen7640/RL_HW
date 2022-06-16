@@ -65,11 +65,13 @@ if __name__ == '__main__':
     w_updates = 20
     gamma = 0.999
     data_transformer = DataTransformer()
-    for seed in [110, 123, 136]:
+    successes = np.zeros((3, w_updates))
+    num_of_iter = []
+    for i, seed in enumerate([110, 123, 136]):
         np.random.seed(seed)
-        linear_policy = LinearPolicy(120, 3, include_bias=False)
+        linear_policy = LinearPolicy(120, 3, include_bias=True)
         states, actions, rewards, next_states, done_flags = DataCollector(env).collect_data(samples_to_collect)
-        data_transformer.set_using_states(states)
+        data_transformer.set_using_states(np.concatenate((states, next_states), axis=0))
         states=data_transformer.transform_states(states)
         next_states=data_transformer.transform_states(next_states)
         encoded_states = feature_extractor.encode_states_with_radial_basis_functions(states)
@@ -81,6 +83,49 @@ if __name__ == '__main__':
                 encoded_states, encoded_next_states, actions, rewards, done_flags, linear_policy, gamma
             )
             norm_diff = linear_policy.set_w(new_w)
+            success_rate = evaluation(env, data_transformer, feature_extractor, linear_policy)
+            print(success_rate)
+            successes[i, lspi_iteration] = success_rate
+
             if norm_diff < 0.00001:
+                num_of_iter += [lspi_iteration]
                 break
-        success_rate = evaluation(env, data_transformer, feature_extractor, linear_policy)
+    min_iter = min(num_of_iter)
+    mean_success = np.mean(successes, axis=0)
+    plt.plot(range(min_iter), mean_success[:min_iter])
+    plt.title("Average Success Rate over LSPI Iterations")
+    plt.xlabel("LSPI Itaration")
+    plt.ylabel("Success Rate")
+    #plt.xticks(range(w_updates))
+    plt.show()
+
+
+    # Qusetion 3 section 6
+    """successes = np.zeros((3, w_updates))
+    num_of_iter = []
+    for j, samples in enumerate([1000, 50000, 200000]):
+        for i, seed in enumerate([110, 123, 136]):
+            np.random.seed(seed)
+            linear_policy = LinearPolicy(120, 3, include_bias=True)
+            states, actions, rewards, next_states, done_flags = DataCollector(env).collect_data(samples_to_collect)
+            data_transformer.set_using_states(np.concatenate((states, next_states), axis=0))
+            states = data_transformer.transform_states(states)
+            next_states = data_transformer.transform_states(next_states)
+            encoded_states = feature_extractor.encode_states_with_radial_basis_functions(states)
+            encoded_next_states = feature_extractor.encode_states_with_radial_basis_functions(next_states)
+            for lspi_iteration in range(w_updates):
+                print(f'starting lspi iteration {lspi_iteration}')
+
+                new_w = compute_lspi_iteration(
+                    encoded_states, encoded_next_states, actions, rewards, done_flags, linear_policy, gamma
+                )
+                norm_diff = linear_policy.set_w(new_w)
+                success_rate = evaluation(env, data_transformer, feature_extractor, linear_policy)
+                print(success_rate)
+                successes[i, lspi_iteration] = success_rate
+
+                if norm_diff < 0.00001:
+                    num_of_iter += [lspi_iteration]
+                    break"""
+
+
