@@ -7,9 +7,10 @@ from data_transformer import DataTransformer
 from lspi import compute_lspi_iteration
 from game_player import GamePlayer
 from linear_policy import LinearPolicy
+from q_learn_mountain_car import *
 
 def evaluation(env, data_transformer, feature_extractor, policy):
-    max_steps_per_game = 1000
+    max_steps_per_game = 200
     number_of_games = 50
     play = GamePlayer(env, data_transformer, feature_extractor, policy)
     start_pos = np.random.uniform(env.low[0], env.high[0], size=number_of_games)
@@ -65,7 +66,7 @@ if __name__ == '__main__':
     w_updates = 20
     gamma = 0.999
     data_transformer = DataTransformer()
-    successes = np.zeros((3, w_updates))
+    """successes = np.zeros((3, w_updates))
     num_of_iter = []
     for i, seed in enumerate([110, 123, 136]):
         np.random.seed(seed)
@@ -96,18 +97,17 @@ if __name__ == '__main__':
     plt.title("Average Success Rate over LSPI Iterations")
     plt.xlabel("LSPI Itaration")
     plt.ylabel("Success Rate")
-    #plt.xticks(range(w_updates))
-    plt.show()
+    plt.show()"""
 
 
     # Qusetion 3 section 6
-    """successes = np.zeros((3, w_updates))
+    successes = np.zeros((3, 3, w_updates))
     num_of_iter = []
     for j, samples in enumerate([1000, 50000, 200000]):
         for i, seed in enumerate([110, 123, 136]):
             np.random.seed(seed)
             linear_policy = LinearPolicy(120, 3, include_bias=True)
-            states, actions, rewards, next_states, done_flags = DataCollector(env).collect_data(samples_to_collect)
+            states, actions, rewards, next_states, done_flags = DataCollector(env).collect_data(samples)
             data_transformer.set_using_states(np.concatenate((states, next_states), axis=0))
             states = data_transformer.transform_states(states)
             next_states = data_transformer.transform_states(next_states)
@@ -122,10 +122,70 @@ if __name__ == '__main__':
                 norm_diff = linear_policy.set_w(new_w)
                 success_rate = evaluation(env, data_transformer, feature_extractor, linear_policy)
                 print(success_rate)
-                successes[i, lspi_iteration] = success_rate
+                successes[i, j, lspi_iteration] = success_rate
 
                 if norm_diff < 0.00001:
                     num_of_iter += [lspi_iteration]
-                    break"""
+                    break
+
+    min_iter = min(num_of_iter)
+    mean_success = np.mean(successes, axis=0)
+
+    fig, ax = plt.subplots()
+    ax.plot(range(min_iter), mean_success[0, :min_iter])
+    ax.plot(range(min_iter), mean_success[1, :min_iter])
+    ax.plot(range(min_iter), mean_success[2, :min_iter])
+    ax.set_xlabel("LSPI Itaration")
+    ax.set_ylabel("Success rate")
+    ax.legend(["1,000 samples", "50,000 samples", "200,000 samples"])
+    plt.show()
+
+
+    # Question 4 section 3
+
+    gamma = 0.99
+    learning_rate = 0.01
+    epsilon_current = 0.1
+    epsilon_decrease = 1.
+    epsilon_min = 0.05
+
+    max_episodes = 100000
+    rewards = np.zeros((3, max_episodes))
+    performance = np.zeros((3, max_episodes))
+    values = np.zeros((3, max_episodes))
+    bellman_erros = np.zeros((3, 100))
+
+    for i, seed in enumerate([110, 123, 136]):
+        env = MountainCarWithResetEnv()
+        np.random.seed(seed)
+        env.seed(seed)
+
+        solver = Solver(
+            # learning parameters
+            gamma=gamma, learning_rate=learning_rate,
+            # feature extraction parameters
+            number_of_kernels_per_dim=[7, 5],
+            # env dependencies (DO NOT CHANGE):
+            number_of_actions=env.action_space.n,
+        )
+
+        for episode_index in range(1, max_episodes + 1):
+            episode_gain, mean_delta = run_episode(env, solver, is_train=True, epsilon=epsilon_current)
+
+            # reduce epsilon if required
+            epsilon_current *= epsilon_decrease
+            epsilon_current = max(epsilon_current, epsilon_min)
+
+            print(f'after {episode_index}, reward = {episode_gain}, epsilon {epsilon_current}, average error {mean_delta}')
+
+            # termination condition:
+            if episode_index % 10 == 9:
+                test_gains = [run_episode(env, solver, is_train=False, epsilon=0.)[0] for _ in range(10)]
+                mean_test_gain = np.mean(test_gains)
+                print(f'tested 10 episodes: mean gain is {mean_test_gain}')
+                if mean_test_gain >= -75.:
+                    print(f'solved in {episode_index} episodes')
+                    break
+
 
 
