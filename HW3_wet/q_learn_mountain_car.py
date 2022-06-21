@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import matplotlib.pyplot as plt
 
 from data_transformer import DataTransformer
 from mountain_car_with_data_collection import MountainCarWithResetEnv
@@ -56,8 +57,16 @@ class Solver:
 
     def update_theta(self, state, action, reward, next_state, done):
         # compute the new weights and set in self.theta. also return the bellman error (for tracking).
-        assert False, "implement update_theta"
-        return 0.0
+        q_sa = self.get_q_val(self.get_features(state),action)
+        best_action = self.get_max_action(next_state)
+        q_next_s_a = self.get_q_val(self.get_features(next_state),best_action)
+        if done:
+            err = 0.0
+        else:
+            err = reward + self.gamma*q_next_s_a - q_sa
+        features = self.get_state_action_features(state,action)
+        self.theta = self.theta + self.learning_rate*err*features
+        return err
 
 
 def modify_reward(reward):
@@ -101,14 +110,19 @@ def run_episode(env, solver, is_train=True, epsilon=None, max_steps=200, render=
 
 
 if __name__ == "__main__":
+    run_section = 5
     env = MountainCarWithResetEnv()
-    seed = 123
-    # seed = 234
-    # seed = 345
-    np.random.seed(seed)
-    env.seed(seed)
+    seeds = [123, 234, 345]
+    epsilons = [0.1]
+    if run_section == 5:
+        seeds = [123]
+        epsilons = [1.0,0.75,0.5,0.3,0.001]
+    #seeds = [123]
+    #seed = 234
+    #seed = 345
 
-    gamma = 0.99
+
+    gamma = 0.999
     learning_rate = 0.01
     epsilon_current = 0.1
     epsilon_decrease = 1.
@@ -124,23 +138,93 @@ if __name__ == "__main__":
         # env dependencies (DO NOT CHANGE):
         number_of_actions=env.action_space.n,
     )
+    total_rewards = [[],[],[]]
+    bottom_hill_value = [[],[],[]]
+    total_bellman_error = [[],[],[]]
+    total_eval = [[],[],[]]
+    total_reward_epsilon =[[],[],[],[],[]]
+    for epsilon_idx,epsilon in enumerate(epsilons):
+        epsilon_current = epsilon
+        for seed_idx,seed in enumerate(seeds):
+            np.random.seed(seed)
+            env.seed(seed)
+            last_100_bellman_err = []
+            success_counter = 0
+            for episode_index in range(1, max_episodes + 1):
+                episode_gain, mean_delta = run_episode(env, solver, is_train=True, epsilon=epsilon_current)
 
-    for episode_index in range(1, max_episodes + 1):
-        episode_gain, mean_delta = run_episode(env, solver, is_train=True, epsilon=epsilon_current)
+                # reduce epsilon if required
+                epsilon_current *= epsilon_decrease
+                epsilon_current = max(epsilon_current, epsilon_min)
 
-        # reduce epsilon if required
-        epsilon_current *= epsilon_decrease
-        epsilon_current = max(epsilon_current, epsilon_min)
+                print(f'after {episode_index}, reward = {episode_gain}, epsilon {epsilon_current}, average error {mean_delta}')
+                # total reward
+                if run_section == 5:
+                    total_reward_epsilon[epsilon_idx].append(episode_gain)
+                if run_section == 4:
+                    total_rewards[seed_idx].append(episode_gain)
+                    # bottom hill value
+                    bottom_hill_feature_ext = solver.get_features(np.array([-0.5,0]))
+                    bottom_hill_value[seed_idx].append(np.mean(solver.get_all_q_vals(bottom_hill_feature_ext)))
+                    # total_bellman_error
+                    last_100_bellman_err.append(mean_delta)
+                    if len(last_100_bellman_err) > 100:
+                        last_100_bellman_err.pop(0)
+                    total_bellman_error[seed_idx].append(np.mean(last_100_bellman_err))
+                # termination condition:
+                if episode_index % 10 == 9:
+                    test_gains = [run_episode(env, solver, is_train=False, epsilon=0.)[0] for _ in range(10)]
+                    mean_test_gain = np.mean(test_gains)
+                    # total eval
+                    success_rate = np.array(test_gains) > - 75
+                    if run_section == 4:
+                        total_eval[seed_idx].append(np.mean(success_rate))
+                    print(f'tested 10 episodes: mean gain is {mean_test_gain}')
+                    if mean_test_gain >= -75.:
+                        if success_counter == 0:
+                            print(f'solved in {episode_index} episodes')
+                        success_counter += 1
+                        if success_counter >= 9:
+                            break
 
-        print(f'after {episode_index}, reward = {episode_gain}, epsilon {epsilon_current}, average error {mean_delta}')
+        #run_episode(env, solver, is_train=False, render=True)
 
-        # termination condition:
-        if episode_index % 10 == 9:
-            test_gains = [run_episode(env, solver, is_train=False, epsilon=0.)[0] for _ in range(10)]
-            mean_test_gain = np.mean(test_gains)
-            print(f'tested 10 episodes: mean gain is {mean_test_gain}')
-            if mean_test_gain >= -75.:
-                print(f'solved in {episode_index} episodes')
-                break
-
-    run_episode(env, solver, is_train=False, render=True)
+        # section 3 plot
+    if run_section == 4:
+        for i in range(len(seeds)):
+            # graph 1
+            plt.figure()
+            plt.plot(np.arange(1, len(total_rewards[i]) + 1,10), total_rewards[i][::10])
+            plt.title("Total Reward in the Training Episode vs. Training Episodes - seed: {}".format(seeds[i]))
+            plt.xlabel("Training Episodes")
+            plt.ylabel("Total Reward")
+            # graph 2
+            plt.figure()
+            plt.plot(np.arange(1, len(total_eval[i]) + 1), total_eval[i])
+            plt.title("Success Rate vs. Training Episodes - seed: {}".format(seeds[i]))
+            plt.xlabel("Training Episodes")
+            plt.ylabel("Success Rate")
+            # graph 3
+            plt.figure()
+            plt.plot(range(len(bottom_hill_value[i])), bottom_hill_value[i])
+            plt.title("Approximated Bottom Hill State Value vs. Training Episodes - seed: {}".format(seeds[i]))
+            plt.xlabel("Training Episodes")
+            plt.ylabel("Bottom Hill Value")
+            # graph 4
+            plt.figure()
+            plt.plot(range(len(total_bellman_error[i])), total_bellman_error[i])
+            plt.title(
+                "Total Bellman Error of The Episode (averaged over 100 episodes) vs. Training Episodes - seed: {}".format(
+                    seeds[i]))
+            plt.xlabel("Training Episodes")
+            plt.ylabel("Bellman Error")
+            plt.show()
+    if run_section == 5:
+        for i in range(len(epsilons)):
+            # graph 1
+            plt.figure()
+            plt.plot(np.arange(1, len(total_reward_epsilon[i]) + 1, 10), total_reward_epsilon[i][::10])
+            plt.title("Total Reward in the Training Episode vs. Training Episodes - epsilon: {}".format(epsilons[i]))
+            plt.xlabel("Training Episodes")
+            plt.ylabel("Total Reward")
+        plt.show()
