@@ -110,7 +110,7 @@ def run_episode(env, solver, is_train=True, epsilon=None, max_steps=200, render=
 
 
 if __name__ == "__main__":
-    run_section = 5
+    run_section = 4
     env = MountainCarWithResetEnv()
     seeds = [123, 234, 345]
     epsilons = [0.1]
