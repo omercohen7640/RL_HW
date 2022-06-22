@@ -110,7 +110,7 @@ def run_episode(env, solver, is_train=True, epsilon=None, max_steps=200, render=
 
 
 if __name__ == "__main__":
-    run_section = 4
+    run_section = 5
     env = MountainCarWithResetEnv()
     seeds = [123, 234, 345]
     epsilons = [0.1]
@@ -130,14 +130,7 @@ if __name__ == "__main__":
 
     max_episodes = 100000
 
-    solver = Solver(
-        # learning parameters
-        gamma=gamma, learning_rate=learning_rate,
-        # feature extraction parameters
-        number_of_kernels_per_dim=[7, 5],
-        # env dependencies (DO NOT CHANGE):
-        number_of_actions=env.action_space.n,
-    )
+
     total_rewards = [[],[],[]]
     bottom_hill_value = [[],[],[]]
     total_bellman_error = [[],[],[]]
@@ -150,6 +143,14 @@ if __name__ == "__main__":
             env.seed(seed)
             last_100_bellman_err = []
             success_counter = 0
+            solver = Solver(
+                # learning parameters
+                gamma=gamma, learning_rate=learning_rate,
+                # feature extraction parameters
+                number_of_kernels_per_dim=[7, 5],
+                # env dependencies (DO NOT CHANGE):
+                number_of_actions=env.action_space.n,
+            )
             for episode_index in range(1, max_episodes + 1):
                 episode_gain, mean_delta = run_episode(env, solver, is_train=True, epsilon=epsilon_current)
 
